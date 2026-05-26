@@ -57,6 +57,23 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+## What To Expect
+
+- A web chat UI where employees can ask questions about the included synthetic HR policies.
+- Streaming assistant responses with visible activity states such as request received, tool call, generation, and completion.
+- Grounded answers based on retrieved MCP knowledge chunks, with citation cards under supported answers.
+- Helpful behavior for unknown topics: the assistant should say when the current knowledge base does not contain enough information.
+- Feedback controls for rating answers as helpful or needing work.
+- Three local services during development: React frontend, FastAPI AI Gateway, and remote MCP Knowledge Server.
+
+## What Is Not Included
+
+- No real employee, Oracle, company-confidential, PHI, or private HR data.
+- No production authentication, SSO, RBAC, tenant isolation, or document-level authorization.
+- No guarantee that the LLM is legally or operationally authoritative for HR decisions; source citations should be reviewed.
+- No production deployment scripts, cloud infrastructure, monitoring stack, or load testing.
+- No large enterprise corpus ingestion; the included dataset is intentionally small and synthetic for the POC.
+
 ## Demo Questions
 
 - "Summarize our leave policy."
