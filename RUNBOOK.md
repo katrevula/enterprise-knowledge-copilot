@@ -1,19 +1,23 @@
-# RUNBOOK: Install, Configure, Run
+# Runbook
 
-This runbook is the reproducible setup guide for the Enterprise Knowledge Copilot.
+This runbook describes the standard local operating procedure for Enterprise Knowledge Copilot. It is optimized for repeatable evaluator setup, smoke testing, and troubleshooting.
 
-For more detailed macOS and Windows instructions, see [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md).
+## Runtime Topology
 
-## 1. Required Installations
+| Service | Port | Command Owner | Purpose |
+| --- | ---: | --- | --- |
+| React UI | `5173` | `frontend/` | Chat interface and feedback controls. |
+| FastAPI Gateway | `8000` | `backend/` | Chat API, streaming, LLM calls, MCP client, persistence. |
+| MCP Knowledge Server | `8001` | `mcp-server/` | Policy search tools, Chroma retrieval, MCP feedback tool. |
 
-Install these public/free tools:
+## Prerequisites
 
-- Python 3.11+
-- Node.js 20+
-- npm 10+
-- A Groq Free Plan API key from `https://console.groq.com/keys`
+- Python 3.11 or newer
+- Node.js 20 or newer
+- npm 10 or newer
+- A Groq API key, or another OpenAI-compatible provider configured through `.env`
 
-Check local versions:
+Verify local versions:
 
 ```bash
 python3 --version
@@ -21,17 +25,31 @@ node --version
 npm --version
 ```
 
-## 2. Python Environment
+## Environment Configuration
 
-From the repository root:
+Create local configuration:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r backend/requirements.txt
-pip install -r mcp-server/requirements.txt
+cp .env.example .env
 ```
+
+Required values:
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | Yes | none | API key for the configured OpenAI-compatible LLM provider. |
+| `OPENAI_BASE_URL` | Yes | `https://api.groq.com/openai/v1` | LLM API base URL. |
+| `LLM_MODEL` | Yes | `llama-3.1-8b-instant` | Model used for tool planning and final answer generation. |
+| `MCP_SERVER_URL` | Yes | `http://localhost:8001/mcp` | Remote MCP endpoint used by the FastAPI gateway. |
+| `BACKEND_DATABASE_URL` | No | `storage/copilot.db` | SQLite database for conversations, citations, feedback, and audits. |
+| `CHROMA_PERSIST_DIR` | No | `storage/chroma` | Local Chroma index directory. |
+| `HR_POLICY_DATA_DIR` | No | `data/hr_policies` | Markdown policy corpus directory. |
+| `MIN_RELEVANCE_SCORE` | No | `0.45` | Minimum retrieval score required for a citation to be treated as grounded. |
+| `VITE_API_BASE_URL` | No | `http://localhost:8000` | Frontend API base URL. |
+
+Do not commit `.env`.
+
+## First-Time Setup
 
 macOS shortcut:
 
@@ -39,88 +57,45 @@ macOS shortcut:
 ./scripts/setup-mac.sh
 ```
 
-Windows PowerShell shortcut:
-
-```powershell
-.\scripts\setup-windows.ps1
-```
-
-## 3. Frontend Dependencies
+Manual setup:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r backend/requirements.txt -r mcp-server/requirements.txt
+
 cd frontend
 npm install
 cd ..
 ```
 
-## 4. Environment Variables
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-OPENAI_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_API_KEY=<your_groq_api_key>
-LLM_MODEL=llama-3.1-8b-instant
-LLM_TIMEOUT_SECONDS=30
-MCP_SERVER_URL=http://localhost:8001/mcp
-BACKEND_DATABASE_URL=storage/copilot.db
-CHROMA_PERSIST_DIR=storage/chroma
-HR_POLICY_DATA_DIR=data/hr_policies
-HF_HOME=storage/huggingface
-```
-
-## 5. Build the HR Knowledge Index
+Build the local retrieval index:
 
 ```bash
 source .venv/bin/activate
 PYTHONPATH=mcp-server python mcp-server/scripts/ingest_documents.py
 ```
 
-This reads synthetic HR Markdown documents from `data/hr_policies/` and writes a local Chroma index under `storage/chroma/`.
+The ingestion step reads `data/hr_policies/*.md`, chunks the documents, generates embeddings, and writes the Chroma index to `storage/chroma/`.
 
-## 6. Run the Remote MCP Server
+## Start Services
 
-Terminal 1:
+Terminal 1, MCP Knowledge Server:
 
 ```bash
 source .venv/bin/activate
 PYTHONPATH=mcp-server uvicorn mcp_server.main:app --host 0.0.0.0 --port 8001
 ```
 
-Health check:
-
-```bash
-curl http://localhost:8001/health
-```
-
-MCP endpoint:
-
-```text
-http://localhost:8001/mcp
-```
-
-## 7. Run the FastAPI AI Gateway
-
-Terminal 2:
+Terminal 2, FastAPI Gateway:
 
 ```bash
 source .venv/bin/activate
 PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Health check:
-
-```bash
-curl http://localhost:8000/api/health
-```
-
-## 8. Run the React Frontend
-
-Terminal 3:
+Terminal 3, React UI:
 
 ```bash
 cd frontend
@@ -133,34 +108,77 @@ Open:
 http://localhost:5173
 ```
 
-## 9. Run Tests
-
-Backend:
-
-```bash
-source .venv/bin/activate
-PYTHONPATH=backend pytest backend/tests
-```
+## Health Checks
 
 MCP server:
 
 ```bash
-source .venv/bin/activate
-PYTHONPATH=mcp-server pytest mcp-server/tests
+curl http://localhost:8001/health
+```
+
+Expected shape:
+
+```json
+{"status":"ok","service":"remote-mcp-knowledge-server","transport":"streamable-http","mcp_path":"/mcp"}
+```
+
+FastAPI gateway:
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+Expected shape:
+
+```json
+{"status":"ok","service":"fastapi-ai-gateway","llm_configured":true}
 ```
 
 Frontend:
 
 ```bash
-cd frontend
-npm test
+curl -I http://localhost:5173/
 ```
 
-## 10. Troubleshooting
+Expected result: HTTP `200 OK`.
 
-- Missing Groq key: confirm `OPENAI_API_KEY` is set in `.env`.
-- Groq rate limit: wait for quota reset or use a different free-compatible model/provider.
-- MCP connection error: confirm the MCP server is running on port `8001` and `MCP_SERVER_URL` ends with `/mcp`.
-- Empty search results: rerun `PYTHONPATH=mcp-server python mcp-server/scripts/ingest_documents.py`.
-- Port conflict: run the affected service on another port and update `.env` or `VITE_API_BASE_URL`.
-- First ingestion is slow: the public embedding model may download on first run.
+## Quality Gates
+
+Run these before packaging or handoff:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=backend pytest backend/tests
+PYTHONPATH=mcp-server pytest mcp-server/tests
+.venv/bin/python -m compileall -q backend mcp-server
+```
+
+```bash
+cd frontend
+npm test
+npm run build
+```
+
+## Operational Notes
+
+- The first ingestion or server start can download the embedding model into `storage/huggingface/`.
+- Runtime data is local and ignored by Git under `storage/`.
+- Feedback is written by the gateway and also sent to the MCP feedback tool when available.
+- `MIN_RELEVANCE_SCORE` protects unsupported questions from receiving unrelated citations.
+- If the MCP server is unavailable, tool listing falls back to local schemas, but actual tool execution still requires the MCP server.
+
+## Troubleshooting
+
+| Symptom | Likely Cause | Resolution |
+| --- | --- | --- |
+| `OPENAI_API_KEY is not configured` | Missing key in `.env` or gateway not restarted. | Set `OPENAI_API_KEY`, then restart FastAPI. |
+| Backend health has `"llm_configured": false` | API key missing. | Update `.env`; do not rely on shell-only exports unless the process uses them. |
+| MCP connection error | MCP server not running or wrong URL. | Check `curl http://localhost:8001/health` and `MCP_SERVER_URL`. |
+| Empty or weak citations | Index missing or stale. | Rerun `PYTHONPATH=mcp-server python mcp-server/scripts/ingest_documents.py`. |
+| Frontend cannot reach backend | Wrong `VITE_API_BASE_URL` or backend is stopped. | Start backend on `8000` or set `VITE_API_BASE_URL`. |
+| Port already in use | Previous service instance still running. | Stop the existing process or use a different port and update dependent config. |
+| Groq rate-limit error | Free provider quota exceeded. | Wait for reset or configure another OpenAI-compatible provider. |
+
+## Shutdown
+
+Press `Ctrl+C` in each terminal running a service. Generated local data can be removed by deleting `storage/`, but doing so requires re-running ingestion before the next demo.

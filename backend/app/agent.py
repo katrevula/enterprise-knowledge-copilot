@@ -4,6 +4,7 @@ import json
 from collections.abc import AsyncIterator
 from typing import Any
 
+from .config import settings
 from .llm_client import LLMClient
 from .mcp_client import MCPToolClient
 
@@ -44,7 +45,9 @@ class EnterpriseCopilotAgent:
                     "event": "tool_call",
                     "data": {"name": name, "arguments": self._safe_tool_metadata(arguments)},
                 }
-                tool_result = await self.mcp.call_tool(name, arguments)
+                tool_result = self._filter_low_relevance_results(
+                    await self.mcp.call_tool(name, arguments)
+                )
                 tool_results.append(tool_result)
                 final_messages.append(
                     {
@@ -62,9 +65,11 @@ class EnterpriseCopilotAgent:
                     "arguments": {"query": user_message, "top_k": 5, "fallback": True},
                 },
             }
-            tool_result = await self.mcp.call_tool(
-                "search_hr_knowledge_base",
-                {"query": user_message, "top_k": 5},
+            tool_result = self._filter_low_relevance_results(
+                await self.mcp.call_tool(
+                    "search_hr_knowledge_base",
+                    {"query": user_message, "top_k": 5},
+                )
             )
             tool_results.append(tool_result)
             final_messages.append(
@@ -150,6 +155,32 @@ class EnterpriseCopilotAgent:
                 allowed[key] = arguments[key]
         return allowed
 
+    def _filter_low_relevance_results(self, tool_result: dict[str, Any]) -> dict[str, Any]:
+        result = tool_result.get("result", {})
+        if tool_result.get("tool") != "search_hr_knowledge_base" or not isinstance(result, dict):
+            return tool_result
+
+        results = result.get("results")
+        if not isinstance(results, list):
+            return tool_result
+
+        filtered = []
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            score = item.get("score")
+            if isinstance(score, (int, float)) and float(score) >= settings.min_relevance_score:
+                filtered.append(item)
+
+        return {
+            **tool_result,
+            "result": {
+                **result,
+                "results": filtered,
+                "min_relevance_score": settings.min_relevance_score,
+            },
+        }
+
     def _extract_citations(self, tool_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         citations: list[dict[str, Any]] = []
         seen: set[tuple[str, str]] = set()
@@ -186,4 +217,3 @@ class EnterpriseCopilotAgent:
                         }
                     )
         return citations[:5]
-

@@ -1,41 +1,56 @@
 # Assumptions And Limitations
 
+This document defines the boundaries of the current proof of concept so reviewers can evaluate it against the intended scope.
+
 ## Assumptions
 
-- A Groq Free Plan API key is available.
-- The selected Groq model supports OpenAI-compatible tool calling.
-- The app runs as three local services during the POC: MCP server, FastAPI gateway, and React dev server.
-- The dataset is synthetic HR policy content committed under `data/hr_policies/`.
-- Chroma and the embedding model can run on standard developer hardware.
+| Assumption | Impact |
+| --- | --- |
+| A valid OpenAI-compatible LLM API key is available. | Chat generation requires a hosted model call. |
+| The selected model supports OpenAI-compatible tool calling. | The first LLM pass can request MCP tools. |
+| The app runs locally as three services. | Local ports `5173`, `8000`, and `8001` must be available. |
+| The policy corpus is synthetic Markdown content. | No production data ingestion or access control is included. |
+| Chroma and the embedding model can run on standard developer hardware. | Ingestion may download model files on first run. |
 
-## What To Expect
+## Included
 
-- The app runs as a local POC with a React UI, FastAPI gateway, and remote MCP server.
-- Users can ask HR-policy-style questions and receive streamed answers with citations when relevant evidence is retrieved.
-- The activity panel shows major orchestration states, including MCP tool calls and completion.
-- The assistant should avoid inventing policy details and should state when the current knowledge base lacks enough information.
-- Feedback is stored locally for review.
+- React chat UI with streaming answer rendering.
+- FastAPI gateway for chat orchestration, persistence, and MCP tool execution.
+- Remote MCP knowledge server over Streamable HTTP.
+- Chroma semantic retrieval over eight synthetic HR policy documents.
+- Local SQLite persistence for conversations, feedback, and audit metadata.
+- Citations, relevance filtering, insufficient-evidence handling, and feedback controls.
+- macOS and Windows setup guidance.
 
-## What Is Not Included
+## Not Included
 
-- No real employee data, Oracle data, PHI, or company-confidential policy data.
-- No production authentication, SSO, RBAC, tenant isolation, or document-level authorization.
-- No production observability stack, deployment automation, cloud infrastructure, or load testing.
-- No claim that generated answers are authoritative HR decisions.
-- No broad public handbook corpus; the POC uses a small synthetic HR dataset.
+- Production authentication, SSO, RBAC, tenant isolation, or document-level authorization.
+- Production secrets management.
+- Production deployment, autoscaling, tracing, metrics, alerting, or incident response.
+- Document owner workflows, approvals, retention policy, or immutable audit logging.
+- Large-corpus ingestion, incremental indexing, or document versioning.
+- Legal or HR decision authority.
 
-## Limitations
+## Functional Limitations
 
-- Free hosted LLM APIs have rate limits and may return 429 responses.
-- The synthetic dataset is intentionally small.
-- The POC does not implement SSO, RBAC, tenant isolation, or document-level authorization.
-- The UI streams responses over a POST `fetch()` stream rather than native `EventSource`, because `EventSource` cannot send POST bodies.
-- SQLite is used for local persistence and is not intended for multi-node production traffic.
+- The LLM may still produce an imperfect summary of retrieved text.
+- Retrieval quality depends on chunking, embedding model behavior, and corpus quality.
+- The relevance threshold is a practical guardrail, not a formal confidence guarantee.
+- The UI does not currently support conversation search, admin feedback review, or source-document browsing.
+- Feedback is stored but not used automatically for model tuning or retrieval evaluation.
 
-## Improvements With More Time
+## Operational Limitations
 
-- Add authentication and role-based policy access.
-- Add automated retrieval evaluation and hallucination tests.
-- Add admin screens for feedback review.
-- Add multiple MCP servers for HR, IT, legal, and incident management.
-- Add production tracing, metrics, alerting, and immutable audit logs.
+- SQLite is suitable for local evaluation but not multi-node production traffic.
+- Chroma is used locally and is not configured for high availability.
+- The frontend is a Vite development app unless built and served separately.
+- Hosted LLM rate limits can interrupt demos.
+- Runtime state under `storage/` can be deleted and regenerated, but conversation history would be lost.
+
+## Recommended Next Steps
+
+- Add end-to-end tests for chat streaming and citation behavior.
+- Add retrieval evaluation cases with expected source IDs.
+- Add an admin review screen for feedback.
+- Add authorization metadata to chunks during ingestion.
+- Replace local storage with managed production services for any real deployment.

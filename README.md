@@ -1,68 +1,82 @@
 # Enterprise Knowledge Copilot
 
-Enterprise Knowledge Copilot is a fullstack AI take-home project for an internal HR-policy chatbot. It uses a React + TypeScript chat UI, a FastAPI AI Gateway, a separate remote MCP Knowledge Server over Streamable HTTP, Groq's free OpenAI-compatible LLM API, Chroma semantic retrieval, synthetic HR policy documents, citations, feedback, and responsible-AI documentation.
+Enterprise Knowledge Copilot is a local full-stack reference implementation for an HR policy assistant. It combines a React chat interface, a FastAPI AI gateway, a remote MCP knowledge server, Chroma-backed semantic search, a SQLite conversation store, streaming responses, citations, and feedback capture.
 
-## Architecture
+The application is intentionally scoped as a proof of concept. It uses synthetic policy documents from `data/hr_policies/` and is designed to demonstrate reliable AI orchestration, tool use, source grounding, and operational documentation without requiring production infrastructure.
 
-```text
-React Chat UI
-  -> FastAPI AI Gateway via POST streaming
-    -> Groq Free LLM via OpenAI-compatible API
-       - decides whether to call tools
-    -> FastAPI executes requested MCP tool calls
-    -> Remote MCP Knowledge Server over Streamable HTTP
-    -> Chroma + synthetic HR policy docs
-    -> FastAPI sends tool results back to Groq
-    -> Groq generates final grounded answer
-  -> React displays streamed answer, citations, feedback
+## Capabilities
+
+- Streamed chat answers from a React + TypeScript UI.
+- FastAPI-controlled tool loop using an OpenAI-compatible hosted LLM provider.
+- Remote MCP server over Streamable HTTP for policy search and feedback tools.
+- Chroma vector retrieval over eight synthetic HR policy documents.
+- Source citations for grounded answers and insufficient-evidence behavior for weak retrieval matches.
+- Local persistence for conversations, citations, feedback, and audit events.
+
+## System Overview
+
+```mermaid
+flowchart LR
+    ui["React UI<br/>localhost:5173"] --> gateway["FastAPI AI Gateway<br/>localhost:8000"]
+    gateway --> llm["OpenAI-compatible<br/>LLM Provider"]
+    gateway --> mcp["Remote MCP Knowledge Server<br/>localhost:8001/mcp"]
+    gateway --> sqlite["SQLite<br/>conversations, feedback, audit"]
+    mcp --> chroma["Chroma<br/>vector index"]
+    chroma --> docs["Synthetic HR<br/>policy documents"]
 ```
 
-FastAPI is the only MCP host/client. Groq does not connect directly to the MCP server; it only emits OpenAI-compatible tool calls that FastAPI executes.
+FastAPI is the only MCP host/client. The LLM can request tools through OpenAI-compatible tool calls, but it never connects directly to the MCP server. FastAPI executes the MCP calls, filters low-confidence retrieval results, and streams status, answer tokens, citations, and completion metadata back to the UI.
+
+## Repository Layout
+
+| Path | Purpose |
+| --- | --- |
+| `frontend/` | React + TypeScript chat UI built with Vite. |
+| `backend/` | FastAPI gateway, LLM orchestration, SSE streaming, SQLite persistence. |
+| `mcp-server/` | Remote MCP server, Chroma retrieval, document ingestion, feedback tool. |
+| `data/hr_policies/` | Synthetic policy corpus used for retrieval. |
+| `docs/` | Architecture, design, governance, setup, and scale-out documentation. |
+| `scripts/` | macOS and Windows setup helpers. |
+| `storage/` | Local generated runtime data; ignored by Git. |
 
 ## Quick Start
 
-See [RUNBOOK.md](RUNBOOK.md) and [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md) for the full installation guide and exact commands.
+Install prerequisites:
 
-Platform setup scripts are also provided:
+- Python 3.11 or newer
+- Node.js 20 or newer
+- npm 10 or newer
+- A Groq API key, or another OpenAI-compatible provider configured in `.env`
 
-```bash
-# macOS
-./scripts/setup-mac.sh
-```
-
-```powershell
-# Windows PowerShell
-.\scripts\setup-windows.ps1
-```
-
-Manual setup:
+Run setup from the repository root:
 
 ```bash
+cp .env.example .env
+# Edit OPENAI_API_KEY in .env.
+
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r backend/requirements.txt
-pip install -r mcp-server/requirements.txt
+pip install -r backend/requirements.txt -r mcp-server/requirements.txt
 
 cd frontend
 npm install
 cd ..
 
-cp .env.example .env
-# Edit OPENAI_API_KEY with a Groq Free Plan API key.
-
 PYTHONPATH=mcp-server python mcp-server/scripts/ingest_documents.py
-PYTHONPATH=mcp-server uvicorn mcp_server.main:app --host 0.0.0.0 --port 8001
 ```
 
-In a second terminal:
+Start the three local services in separate terminals:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=mcp-server uvicorn mcp_server.main:app --host 0.0.0.0 --port 8001
+```
 
 ```bash
 source .venv/bin/activate
 PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-
-In a third terminal:
 
 ```bash
 cd frontend
@@ -71,22 +85,26 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-## What To Expect
+## Verification
 
-- A web chat UI where employees can ask questions about the included synthetic HR policies.
-- Streaming assistant responses with visible activity states such as request received, tool call, generation, and completion.
-- Grounded answers based on retrieved MCP knowledge chunks, with citation cards under supported answers.
-- Helpful behavior for unknown topics: the assistant should say when the current knowledge base does not contain enough information.
-- Feedback controls for rating answers as helpful or needing work.
-- Three local services during development: React frontend, FastAPI AI Gateway, and remote MCP Knowledge Server.
+```bash
+curl http://localhost:8001/health
+curl http://localhost:8000/api/health
+```
 
-## What Is Not Included
+Expected backend health includes `"llm_configured": true` after `.env` contains a valid API key.
 
-- No real employee, Oracle, company-confidential, PHI, or private HR data.
-- No production authentication, SSO, RBAC, tenant isolation, or document-level authorization.
-- No guarantee that the LLM is legally or operationally authoritative for HR decisions; source citations should be reviewed.
-- No production deployment scripts, cloud infrastructure, monitoring stack, or load testing.
-- No large enterprise corpus ingestion; the included dataset is intentionally small and synthetic for the POC.
+Run tests and build checks:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=backend pytest backend/tests
+PYTHONPATH=mcp-server pytest mcp-server/tests
+
+cd frontend
+npm test
+npm run build
+```
 
 ## Demo Questions
 
@@ -97,12 +115,19 @@ Open `http://localhost:5173`.
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Flow And Architecture Diagrams](docs/DIAGRAMS.md)
+- [Runbook](RUNBOOK.md)
 - [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Architecture Diagrams](docs/DIAGRAMS.md)
 - [Design Rationale](docs/DESIGN.md)
-- [Prompt and Tools](docs/PROMPT_AND_TOOLS.md)
-- [Responsible AI](docs/RESPONSIBLE_AI.md)
-- [Assumptions and Limitations](docs/ASSUMPTIONS_AND_LIMITATIONS.md)
-- [Scale Out](docs/SCALE_OUT.md)
+- [Prompt And Tools](docs/PROMPT_AND_TOOLS.md)
+- [Responsible AI And Governance](docs/RESPONSIBLE_AI.md)
+- [Assumptions And Limitations](docs/ASSUMPTIONS_AND_LIMITATIONS.md)
+- [Scale-Out Considerations](docs/SCALE_OUT.md)
 - [Deliverables Mapping](docs/DELIVERABLES_MAPPING.md)
+
+## Scope Notes
+
+- The corpus is intentionally small and synthetic.
+- The project does not implement production authentication, SSO, RBAC, tenant isolation, document-level authorization, deployment automation, or observability infrastructure.
+- Generated answers are not authoritative policy decisions; users should review cited source excerpts.

@@ -13,3 +13,4 @@ storage/
 Assignment_1_Fullstack.pdf
 frontend/.vite/
 frontend/dist/
+*.tsbuildinfo

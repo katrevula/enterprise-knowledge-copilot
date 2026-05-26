@@ -15,6 +15,7 @@ class Settings:
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     llm_model: str = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
     llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+    min_relevance_score: float = float(os.getenv("MIN_RELEVANCE_SCORE", "0.45"))
     mcp_server_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:8001/mcp")
     database_url: Path = Path(os.getenv("BACKEND_DATABASE_URL", REPO_ROOT / "storage" / "copilot.db"))
     cors_origins: list[str] = [
@@ -25,4 +26,3 @@ class Settings:
 
 
 settings = Settings()
-

@@ -32,6 +32,10 @@ def sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def exclude_message(messages: list[dict[str, Any]], message_id: str) -> list[dict[str, Any]]:
+    return [message for message in messages if message["id"] != message_id]
+
+
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
     return {
@@ -65,7 +69,7 @@ async def chat_stream(payload: ChatStreamRequest) -> StreamingResponse:
         )
 
         try:
-            history = store.get_messages(conversation_id)
+            history = exclude_message(store.get_messages(conversation_id), user_message_id)
             agent = EnterpriseCopilotAgent(LLMClient(), MCPToolClient())
             async for item in agent.stream_response(payload.message, history):
                 event = item["event"]
@@ -157,4 +161,3 @@ async def feedback(payload: FeedbackRequest) -> dict[str, Any]:
 @app.get("/")
 async def root() -> dict[str, str]:
     return {"message": "Enterprise Knowledge Copilot FastAPI Gateway"}
-

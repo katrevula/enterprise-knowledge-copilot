@@ -8,8 +8,8 @@ flowchart LR
     ui -->|"POST /api/chat/stream<br/>fetch streaming"| gateway["FastAPI AI Gateway<br/>Agent Orchestrator"]
     ui -->|"POST /api/feedback"| gateway
 
-    gateway -->|"OpenAI-compatible chat API"| groq["Groq Free Plan LLM<br/>llama-3.1-8b-instant"]
-    groq -->|"tool call request"| gateway
+    gateway -->|"OpenAI-compatible chat API"| llm["LLM Provider<br/>default: llama-3.1-8b-instant"]
+    llm -->|"tool call request"| gateway
     gateway -->|"MCP Streamable HTTP<br/>/mcp"| mcp["Remote MCP Knowledge Server"]
     mcp --> chroma["Chroma Vector Index"]
     chroma --> docs["Synthetic HR Policy Docs"]
@@ -27,7 +27,7 @@ sequenceDiagram
     actor User
     participant UI as React Chat UI
     participant API as FastAPI Gateway
-    participant LLM as Groq LLM
+    participant LLM as LLM Provider
     participant MCP as Remote MCP Server
     participant KB as Chroma + HR Docs
 
@@ -62,12 +62,12 @@ flowchart TB
         sqlite["storage/copilot.db"]
     end
 
-    subgraph "Free Hosted LLM"
-        groq["Groq OpenAI-compatible API"]
+    subgraph "Hosted LLM"
+        llm["OpenAI-compatible API"]
     end
 
     browser --> fastapi
-    fastapi --> groq
+    fastapi --> llm
     fastapi --> mcpserver
     mcpserver --> chroma
     fastapi --> sqlite
@@ -79,7 +79,7 @@ flowchart TB
 flowchart TD
     ui["React UI<br/>presentation, streaming render, feedback buttons"]
     api["FastAPI Gateway<br/>sessions, LLM calls, MCP host, audit events"]
-    llm["Groq LLM<br/>reasoning, tool-call selection, final answer generation"]
+    llm["LLM Provider<br/>reasoning, tool-call selection, final answer generation"]
     mcp["MCP Server<br/>standardized tools and resources"]
     retrieval["Retrieval Layer<br/>embeddings, Chroma search, source metadata"]
 
@@ -89,4 +89,3 @@ flowchart TD
     api --> mcp
     mcp --> retrieval
 ```
-

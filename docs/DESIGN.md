@@ -1,28 +1,58 @@
 # Design Rationale
 
-## Why FastAPI
+This document explains the main implementation choices and tradeoffs behind Enterprise Knowledge Copilot.
 
-FastAPI provides clear request/response contracts, async streaming, OpenAPI docs, and straightforward Python integration with the OpenAI-compatible client, MCP SDK, Chroma, and SQLite.
+## Design Principles
 
-## Why Remote MCP
+- Keep the user experience responsive with streamed status and answer tokens.
+- Put all sensitive configuration and model orchestration on the server side.
+- Use MCP as a real service boundary, not just an in-process helper abstraction.
+- Prefer source-grounded answers over broad model recall.
+- Make the local proof of concept easy to run, inspect, and extend.
 
-MCP is used as the standardized tool/resource layer. The knowledge server is separate from the AI Gateway to show an enterprise-ready boundary where additional tools, policy stores, or access controls can be added without rewriting the UI.
+## Key Decisions
 
-## Why FastAPI Controls The Tool Loop
+| Decision | Rationale | Tradeoff |
+| --- | --- | --- |
+| React + Vite frontend | Fast local development, TypeScript safety, simple streaming fetch support. | No server-side rendering or packaged desktop app. |
+| FastAPI gateway | Strong async support, simple Pydantic contracts, familiar Python ecosystem for LLM and MCP clients. | Requires a separate Python service alongside the UI. |
+| Gateway-owned tool loop | The hosted LLM cannot reach local MCP services directly; FastAPI can safely execute tool calls and control persistence. | More orchestration code in the backend. |
+| Remote MCP knowledge server | Models an enterprise tool boundary that could later sit behind authorization, logging, or independent scaling. | Adds a third local process for the POC. |
+| Chroma local vector store | Demonstrates semantic retrieval and source metadata without a managed vector database. | Not a production search platform by itself. |
+| SQLite local persistence | Simple durable storage for conversation and feedback history. | Not intended for multi-node production traffic. |
+| Synthetic HR corpus | Keeps the project reviewable and safe while matching the assistant use case. | Smaller and cleaner than a real policy corpus. |
 
-Groq is hosted and should not be expected to reach a local MCP endpoint. FastAPI therefore acts as the MCP host/client. The LLM decides when tools are useful; FastAPI executes the MCP calls and returns the results to the LLM.
+## Grounding Strategy
 
-## Why Synthetic HR Data
+The assistant is instructed to answer from MCP-retrieved content. Retrieval is performed by the MCP server and returned with source metadata. The gateway applies `MIN_RELEVANCE_SCORE` before treating results as citations. If no citations survive filtering, the final prompt includes an explicit instruction to state that the current knowledge base lacks enough information.
 
-The assignment asks for public, synthetic, or de-identified data. Synthetic HR policies closely match the problem statement while avoiding private or company-confidential information.
+This design does not guarantee perfect factuality, but it reduces unsupported answers and gives reviewers a clear source trail.
 
-## Why Chroma
+## User Experience Decisions
 
-Chroma gives a local persistent vector index that runs on standard developer hardware. It is enough for the POC while still demonstrating semantic retrieval and citation metadata.
+- The activity panel exposes request lifecycle states and MCP tool calls so the user can see the system doing retrieval work.
+- Citations are shown below answers rather than hidden in logs.
+- Feedback is intentionally lightweight: helpful or needs work. The POC stores enough information to support later review without creating a full admin workflow.
+- The UI uses POST streaming rather than native `EventSource` because the request body includes the user message and conversation ID.
 
-## Key Tradeoffs
+## Error Handling Decisions
 
-- A hosted free LLM avoids local model installation, but the app must handle rate limits.
-- The MCP split adds complexity, but it better demonstrates enterprise integration boundaries.
-- SQLite is sufficient for a POC; production would use a managed database.
+- Missing LLM configuration returns a user-visible hint to set `OPENAI_API_KEY`.
+- MCP tool listing has local fallback schemas, but actual tool execution still requires the MCP service to be running.
+- Unsupported or weakly matched questions are routed to insufficient-evidence behavior instead of forcing citations from unrelated chunks.
+- Local health endpoints allow each service to be checked independently.
 
+## Non-Goals
+
+- Production authentication, SSO, RBAC, tenant isolation, or document-level permissions.
+- Production deployment automation, secrets management, monitoring, tracing, or alerting.
+- Large-scale ingestion, document versioning, or policy owner approval workflows.
+- A legally authoritative HR decision system.
+
+## Extension Points
+
+- Replace the default LLM provider by changing `OPENAI_BASE_URL`, `OPENAI_API_KEY`, and `LLM_MODEL`.
+- Add additional MCP tools in `mcp-server/mcp_server/main.py`.
+- Extend persistence in `backend/app/database.py`.
+- Add policy metadata, versioning, or authorization attributes during ingestion.
+- Add regression evaluations for known questions and expected citations.
