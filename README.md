@@ -21,7 +21,21 @@ FastAPI is the only MCP host/client. Groq does not connect directly to the MCP s
 
 ## Quick Start
 
-See [RUNBOOK.md](RUNBOOK.md) for the full installation guide and exact commands.
+See [RUNBOOK.md](RUNBOOK.md) and [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md) for the full installation guide and exact commands.
+
+Platform setup scripts are also provided:
+
+```bash
+# macOS
+./scripts/setup-mac.sh
+```
+
+```powershell
+# Windows PowerShell
+.\scripts\setup-windows.ps1
+```
+
+Manual setup:
 
 ```bash
 python3 -m venv .venv
@@ -85,6 +99,7 @@ Open `http://localhost:5173`.
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Flow And Architecture Diagrams](docs/DIAGRAMS.md)
+- [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md)
 - [Design Rationale](docs/DESIGN.md)
 - [Prompt and Tools](docs/PROMPT_AND_TOOLS.md)
 - [Responsible AI](docs/RESPONSIBLE_AI.md)

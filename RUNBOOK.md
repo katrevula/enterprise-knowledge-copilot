@@ -2,6 +2,8 @@
 
 This runbook is the reproducible setup guide for the Enterprise Knowledge Copilot.
 
+For more detailed macOS and Windows instructions, see [Detailed Installation And Running Guide](docs/INSTALLATION_AND_RUNNING.md).
+
 ## 1. Required Installations
 
 Install these public/free tools:
@@ -29,6 +31,18 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r backend/requirements.txt
 pip install -r mcp-server/requirements.txt
+```
+
+macOS shortcut:
+
+```bash
+./scripts/setup-mac.sh
+```
+
+Windows PowerShell shortcut:
+
+```powershell
+.\scripts\setup-windows.ps1
 ```
 
 ## 3. Frontend Dependencies

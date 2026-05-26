@@ -11,7 +11,7 @@
 | AI interaction improvements | citations, feedback, tool activity, insufficient-evidence behavior |
 | Source code repository | monorepo structure in this workspace |
 | README setup instructions | `README.md` |
-| Full installation/run guide | `RUNBOOK.md` |
+| Full installation/run guide | `RUNBOOK.md`, `docs/INSTALLATION_AND_RUNNING.md` |
 | LLM/API key configuration | `.env.example`, `RUNBOOK.md` |
 | Dataset configuration | `data/hr_policies/`, ingestion script, `RUNBOOK.md` |
 | Architecture overview | `docs/ARCHITECTURE.md`, `docs/DIAGRAMS.md` |
