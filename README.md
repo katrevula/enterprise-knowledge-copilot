@@ -67,10 +67,10 @@ Open `http://localhost:5173`.
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Flow And Architecture Diagrams](docs/DIAGRAMS.md)
 - [Design Rationale](docs/DESIGN.md)
 - [Prompt and Tools](docs/PROMPT_AND_TOOLS.md)
 - [Responsible AI](docs/RESPONSIBLE_AI.md)
 - [Assumptions and Limitations](docs/ASSUMPTIONS_AND_LIMITATIONS.md)
 - [Scale Out](docs/SCALE_OUT.md)
 - [Deliverables Mapping](docs/DELIVERABLES_MAPPING.md)
-

@@ -22,6 +22,8 @@ React Chat UI
 - The MCP server exposes tools/resources over Streamable HTTP. It owns retrieval and source metadata.
 - Chroma stores local embeddings for synthetic HR policy chunks.
 
+For Mermaid system, sequence, deployment, and responsibility diagrams, see [Flow And Architecture Diagrams](DIAGRAMS.md).
+
 ## Request Lifecycle
 
 1. User sends a message from the React chat UI.
@@ -37,4 +39,3 @@ React Chat UI
 ## Why Streamable HTTP
 
 Streamable HTTP is used because this project models a remote enterprise MCP server. `stdio` is better suited for local subprocess tools, while Streamable HTTP allows separate deployment, network boundaries, service health checks, and future scaling.
-

@@ -14,7 +14,7 @@
 | Full installation/run guide | `RUNBOOK.md` |
 | LLM/API key configuration | `.env.example`, `RUNBOOK.md` |
 | Dataset configuration | `data/hr_policies/`, ingestion script, `RUNBOOK.md` |
-| Architecture overview | `docs/ARCHITECTURE.md` |
+| Architecture overview | `docs/ARCHITECTURE.md`, `docs/DIAGRAMS.md` |
 | Accuracy and limitations | `docs/RESPONSIBLE_AI.md`, `docs/ASSUMPTIONS_AND_LIMITATIONS.md` |
 | Risks such as incorrect answers and over-reliance | `docs/RESPONSIBLE_AI.md` |
 | Scale-out considerations | `docs/SCALE_OUT.md` |
@@ -28,4 +28,3 @@
 | Public/synthetic data only | synthetic HR documents under `data/hr_policies/` |
 | Correctness and reliability over polish | citations, fallback retrieval, error states, tests, runbook |
 | Assumptions documented | `docs/ASSUMPTIONS_AND_LIMITATIONS.md` |
-
